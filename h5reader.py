@@ -93,7 +93,7 @@ def DFBuild(fileConnection):
 ##################################################################################
 
 if __name__ == "__main__":
-    exampleFile = fileParse(dataPath)[0]
+    exampleFile = fileParse(dataPath)[3]
     #print(exampleFile)
     #version, date, time = dateExtract(exampleFile)
     
