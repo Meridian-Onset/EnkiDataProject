@@ -4,13 +4,16 @@ import h5py
 import pandas as pd
 import numpy as np
 import os
-import collections
 
 abspath = os.path.abspath(__file__)
 dname = os.path.dirname(abspath)
 os.chdir(dname)
 
 dataPath = "./Data"
+
+months = {'01' : 'Jan','02' : 'Feb', '03' : 'Mar', '04' : 'Apr',
+          '05' : 'May', '06' : 'Jun', '07' : 'Jul', '08' : 'Aug', 
+          '09' : 'Sep', '10' : 'Oct' ,'11' : 'Nov', '12' : 'Dec'}
 
 ##################################################################################
 
@@ -25,6 +28,7 @@ def dateExtract(filePath):
     # Function for extracting the date, time and data version from the filepath
     name = filePath.split('/')[2]
     version = name.split('_')[0]
+    #print(name.split())
     datetime = name.split('_')[1]
 
     date, time = datetime[0:8], datetime[8:16]
@@ -81,27 +85,58 @@ def generalColumnSew(fileConnection):
 
 def DFBuild(fileConnection):
     Latitude, Longitude = locationData(fileConnection)
+    #print(fileConnection.filename)
+    month = dateExtract(fileConnection.filename)[1]
+    
     col1, col2, col3, col4, col5, col6, col7, col8 = generalColumnSew(fileConnection).values()
-    finalDF  = pd.DataFrame({'Latitude' : Latitude, 'Longitude' : Longitude,
-                            'asr_obs' : col1, 'aerosol_frac' : col2,
-                            'asr' : col3, 'cloud_aerosol_obs' : col4,
-                            'cloud_frac' : col5, 'column_od' : col6,
-                             'grnd_detect' : col7, 'tcod_obs' : col8})
+    finalDF  = pd.DataFrame({'GranuleID' : range(1,len(Latitude)+1),
+                             'MON' : [months[month[3:5]]] * len(Latitude),
+                             'Latitude' : Latitude, 'Longitude' : Longitude,
+                             'asr_obs' : col1, 'aerosol_frac' : col2,
+                             'asr' : col3, 
+                             'cloud_aerosol_obs' : col4, 'cloud_frac' : col5,
+                             'column_od' : col6, 'grnd_detect' : col7,
+                             'tcod_obs' : col8})
     return(finalDF)
 
 ##################################################################################
 ##################################################################################
 
 if __name__ == "__main__":
-    exampleFile = fileParse(dataPath)[3]
-    #print(exampleFile)
-    #version, date, time = dateExtract(exampleFile)
+
     
-    f = h5py.File(exampleFile, 'r')
-    df = DFBuild(f)
-    print(df['tcod_obs'].unique())
-    #print(generalColumnSew(f).values())
-    f.close()    
-    finalname = '-'.join(dateExtract(exampleFile)[0:2])
-    df.to_csv(f'{finalname}.csv')
+    datedata = dict()
+    df2018 = pd.DataFrame(columns = ['GranuleID', 'MON', 
+                                                 'Latitude', 'Longitude',
+                                                 'asr_obs', 'aerosol_frac',
+                                                 'asr', 'cloud_aerosol_obs',
+                                                 'cloud_frac', 'column_od',
+                                                 'grnd_detect', 'tcod_obs'])
+    df2019, df2020 = df2018.copy(), df2018.copy()
+    for file in fileParse('.\Data'):
+        
+        version, year, time = dateExtract(file)
+        month = year[3:5]
+        year = year[8:10]
+        
+        
+        
+        if year not in datedata.keys():
+            datedata[year] = []
+            
+        if month not in datedata[year]:
+            datedata[year].append(months[month])
+            
+            f = h5py.File(file, 'r')
+            df = DFBuild(f)
+            f.close()
+            if year == '18':  df2018 = df2018.append(df)
+            elif year == '19': df2019 = df2019.append(df)
+            elif year == '20': df2020 = df2020.append(df)
+            else: print("Funky data year")
+        else: pass
+
+    df2018.to_csv('ATL16_2018.csv')
+    df2019.to_csv('ATL16_2019.csv')
+    df2020.to_csv('ATL16_2020.csv')
 ##################################################################################
